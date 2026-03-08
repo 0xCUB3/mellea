@@ -96,9 +96,14 @@ sandbox = [
     "llm-sandbox[docker]>=0.3.23",
 ]
 
+agent = [
+    "tree-sitter-language-pack>=0.13",
+    "networkx>=3.0",
+]
+
 backends = ["mellea[watsonx,hf,vllm,litellm]"]
 
-all = ["mellea[backends,docling,tools,telemetry,server,sandbox,granite_retriever]"]
+all = ["mellea[backends,docling,tools,telemetry,server,sandbox,granite_retriever,agent]"]
 
 [dependency-groups]
 # Development groups: uv sync --all-groups
