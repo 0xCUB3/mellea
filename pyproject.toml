@@ -29,6 +29,7 @@ dependencies = [
     "pillow", # Needed for Intrinsics (HF and OpenAI Backends).
     "math_verify", # Needed for Majority Voting Sampling Strategies.
     "rouge_score", # Needed for Majority Voting Sampling Strategies.
+    "pyyaml", # Used by backends/adapters for YAML parsing.
 ]
 
 [project.scripts]
