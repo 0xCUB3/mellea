@@ -16,6 +16,8 @@ def read_file(
         content = full_path.read_text(errors="replace")
     except FileNotFoundError:
         return f"Error: file not found: {path}"
+    except OSError as e:
+        return f"Error reading {path}: {e}"
 
     lines = content.splitlines()
     total = len(lines)

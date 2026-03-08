@@ -16,19 +16,27 @@ _SKIP_DIRS = {
     ".eggs",
 }
 _MAX_RESULTS = 50
+_MAX_SCAN = 10_000  # Stop scanning after this many entries to prevent hangs.
 
 
 def find_file(pattern: str, *, repo_root: str) -> str:
     """Find files matching a glob pattern."""
     root = Path(repo_root)
     matches: list[str] = []
-    for p in root.rglob(pattern):
-        if any(s in p.parts for s in _SKIP_DIRS):
-            continue
-        if p.is_file():
-            matches.append(str(p.relative_to(root)))
-            if len(matches) >= _MAX_RESULTS:
+    scanned = 0
+    try:
+        for p in root.rglob(pattern):
+            scanned += 1
+            if scanned > _MAX_SCAN:
                 break
+            if any(s in p.parts for s in _SKIP_DIRS):
+                continue
+            if p.is_file():
+                matches.append(str(p.relative_to(root)))
+                if len(matches) >= _MAX_RESULTS:
+                    break
+    except OSError as e:
+        return f"Error scanning directory: {e}"
     if not matches:
         return f"No files matching '{pattern}' found."
     result = "\n".join(sorted(matches))
@@ -42,10 +50,13 @@ def list_dir(path: str = ".", *, repo_root: str) -> str:
     full_path = Path(repo_root) / path
     if not full_path.is_dir():
         return f"Error: not a directory: {path}"
-    entries: list[str] = []
-    for p in sorted(full_path.iterdir()):
-        if p.name.startswith(".") and p.name in _SKIP_DIRS:
-            continue
-        kind = "dir" if p.is_dir() else "file"
-        entries.append(f"  {p.name:<40} [{kind}]")
+    try:
+        entries: list[str] = []
+        for p in sorted(full_path.iterdir()):
+            if p.name.startswith(".") and p.name in _SKIP_DIRS:
+                continue
+            kind = "dir" if p.is_dir() else "file"
+            entries.append(f"  {p.name:<40} [{kind}]")
+    except OSError as e:
+        return f"Error listing {path}: {e}"
     return f"{path}/\n" + "\n".join(entries) if entries else f"{path}/ (empty)"

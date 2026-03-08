@@ -80,6 +80,8 @@ def str_replace_edit(path: str, old_str: str, new_str: str, *, repo_root: str) -
         content = full_path.read_text(errors="replace")
     except FileNotFoundError:
         return f"Error: file not found: {path}"
+    except OSError as e:
+        return f"Error reading {path}: {e}"
 
     count = content.count(old_str)
     if count == 0:
@@ -99,7 +101,10 @@ def str_replace_edit(path: str, old_str: str, new_str: str, *, repo_root: str) -
     if post_error and not pre_errors:
         return f"Edit rejected: introduces syntax error. {post_error}. File unchanged."
 
-    full_path.write_text(new_content)
+    try:
+        full_path.write_text(new_content)
+    except OSError as e:
+        return f"Error writing {path}: {e}"
     old_lines = old_str.count("\n") + 1
     new_lines = new_str.count("\n") + 1
     return f"Successfully replaced {old_lines} lines with {new_lines} lines in {path}."
