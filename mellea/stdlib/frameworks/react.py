@@ -90,6 +90,11 @@ async def react(
 
         is_final = False
         tool_responses: list[ToolMessage] = []
+        if step.tool_calls is None:
+            val = step._underlying_value or ""
+            FancyLogger.get_logger().info(
+                f"No tool calls. Model output: {str(val)[:300]}"
+            )
         if step.tool_calls is not None:
             # Code below assumes the tool is called here.
             tool_responses = mfuncs._call_tools(step, backend=backend)

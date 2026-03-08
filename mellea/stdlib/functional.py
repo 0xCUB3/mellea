@@ -950,10 +950,17 @@ def _call_tools(result: ModelOutputThunk, backend: Backend) -> list[ToolMessage]
     if tool_calls:
         # Call the tools and decide what to do.
         for name, tool in tool_calls.items():
+            FancyLogger.get_logger().info(
+                f"Calling tool: {name} with args: {str(tool.args)[:200]}"
+            )
             try:
                 output = tool.call_func()
             except Exception as e:
+                FancyLogger.get_logger().warning(
+                    f"Tool {name} raised: {type(e).__name__}: {e}"
+                )
                 output = e
+            FancyLogger.get_logger().info(f"Tool {name} returned: {str(output)[:200]}")
 
             # Default to the output. Attempt to properly print it. If that doesn't result in a str,
             # stringify it.
