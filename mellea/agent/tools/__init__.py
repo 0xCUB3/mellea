@@ -14,6 +14,9 @@ def make_agent_tools(
     repo_root: str, *, test_cmds: list[str] | None = None
 ) -> list[MelleaTool]:
     """Create the standard set of agent tools bound to a repo root."""
+    # Track read calls per file to detect loops.
+    _read_counts: dict[str, int] = {}
+    _MAX_READS_PER_FILE = 3
 
     def _search(query: str) -> str:
         """Search for a regex pattern across all files in the repo using ripgrep."""
@@ -25,6 +28,13 @@ def make_agent_tools(
 
     def _read(path: str, start_line: int = 1, end_line: int | None = None) -> str:
         """Read a file with line numbers, capped at 200 lines."""
+        _read_counts[path] = _read_counts.get(path, 0) + 1
+        if _read_counts[path] > _MAX_READS_PER_FILE:
+            return (
+                f"You have already read {path} {_read_counts[path]} times. "
+                "You should have enough context by now. "
+                "Either make an edit to fix the bug, or search for a different file."
+            )
         return read_file(path, start_line, end_line, repo_root=repo_root)
 
     def _find(pattern: str) -> str:
