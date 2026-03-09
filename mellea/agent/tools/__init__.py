@@ -6,10 +6,13 @@ from mellea.agent.tools.edit import str_replace_edit
 from mellea.agent.tools.navigate import find_file, list_dir
 from mellea.agent.tools.read import read_file
 from mellea.agent.tools.search import search_code
+from mellea.agent.tools.testing import run_tests
 from mellea.backends.tools import MelleaTool
 
 
-def make_agent_tools(repo_root: str) -> list[MelleaTool]:
+def make_agent_tools(
+    repo_root: str, *, test_cmds: list[str] | None = None
+) -> list[MelleaTool]:
     """Create the standard set of agent tools bound to a repo root."""
 
     def _search(query: str) -> str:
@@ -39,4 +42,13 @@ def make_agent_tools(repo_root: str) -> list[MelleaTool]:
         "find_file": _find,
         "list_dir": _list,
     }
+
+    if test_cmds:
+
+        def _run_tests(test_cmd: str = "default") -> str:
+            """Run tests to check if your fix works. Pass 'default' to run the task's test suite, or a custom pytest/test command."""
+            return run_tests(test_cmd, repo_root=repo_root, test_cmds=test_cmds)
+
+        tools["run_tests"] = _run_tests
+
     return [MelleaTool.from_callable(fn, name=name) for name, fn in tools.items()]
