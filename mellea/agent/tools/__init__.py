@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from mellea.agent.tools.edit import str_replace_edit
 from mellea.agent.tools.navigate import find_file, list_dir
 from mellea.agent.tools.read import read_file
@@ -11,9 +13,17 @@ from mellea.backends.tools import MelleaTool
 
 
 def make_agent_tools(
-    repo_root: str, *, test_cmds: list[str] | None = None
+    repo_root: str,
+    *,
+    test_cmds: list[str] | None = None,
+    test_fn: Callable[[str], str] | None = None,
 ) -> list[MelleaTool]:
-    """Create the standard set of agent tools bound to a repo root."""
+    """Create the standard set of agent tools bound to a repo root.
+
+    If *test_fn* is provided it is used as the test runner instead of the
+    default subprocess-based ``run_tests``.  The callable receives a single
+    command string and must return the combined output.
+    """
 
     def _search(query: str) -> str:
         """Search for a regex pattern across all files in the repo using ripgrep."""
@@ -43,7 +53,15 @@ def make_agent_tools(
         "list_dir": _list,
     }
 
-    if test_cmds:
+    if test_fn is not None:
+
+        def _run_tests_fn(test_cmd: str = "default") -> str:
+            """Run tests to check if your fix works. Pass 'default' to run the task's test suite, or a custom pytest/test command."""
+            return test_fn(test_cmd)
+
+        tools["run_tests"] = _run_tests_fn
+
+    elif test_cmds:
 
         def _run_tests(test_cmd: str = "default") -> str:
             """Run tests to check if your fix works. Pass 'default' to run the task's test suite, or a custom pytest/test command."""
