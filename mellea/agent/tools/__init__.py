@@ -24,6 +24,10 @@ def make_agent_tools(
     default subprocess-based ``run_tests``.  The callable receives a single
     command string and must return the combined output.
     """
+    import os
+
+    read_counts: dict[str, int] = {}
+    read_nudge = os.environ.get("MCODE_READ_NUDGE", "1") == "1"
 
     def _search(query: str) -> str:
         """Search for a regex pattern across all files in the repo using ripgrep."""
@@ -35,7 +39,16 @@ def make_agent_tools(
 
     def _read(path: str, start_line: int = 1, end_line: int | None = None) -> str:
         """Read a file with line numbers, capped at 200 lines."""
-        return read_file(path, start_line, end_line, repo_root=repo_root)
+        result = read_file(path, start_line, end_line, repo_root=repo_root)
+        if read_nudge:
+            count = read_counts.get(path, 0) + 1
+            read_counts[path] = count
+            if count >= 3:
+                result = (
+                    f"[Note: you have read {path} {count} times. "
+                    "Consider searching other files or making your edit.]\n" + result
+                )
+        return result
 
     def _find(pattern: str) -> str:
         """Find files matching a glob pattern."""

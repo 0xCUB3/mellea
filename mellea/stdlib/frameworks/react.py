@@ -1,5 +1,9 @@
 """ReACT Agentic Pattern."""
 
+from __future__ import annotations
+
+from collections.abc import Callable
+
 # from PIL import Image as PILImage
 from mellea.backends.model_options import ModelOption
 from mellea.core.backend import Backend, BaseModelSubclass
@@ -29,6 +33,7 @@ async def react(
     model_options: dict | None = None,
     tools: list[AbstractMelleaTool] | None,
     loop_budget: int = 10,
+    on_turn: Callable[[int, int, ChatContext], ChatContext] | None = None,
 ) -> tuple[ModelOutputThunk[str], ChatContext]:
     """Asynchronous ReACT pattern (Think -> Act -> Observe -> Repeat Until Done); attempts to accomplish the provided goal given the provided tools.
 
@@ -40,6 +45,7 @@ async def react(
         model_options: additional model options, which will upsert into the model/backend's defaults.
         tools: the list of tools to use
         loop_budget: the number of steps allowed; use -1 for unlimited
+        on_turn: optional callback ``(turn, budget, ctx) -> ctx`` called at the start of each turn
 
     Returns:
         A (ModelOutputThunk, Context) if `return_sampling_results` is `False`, else returns a `SamplingResult`.
@@ -73,6 +79,9 @@ async def react(
     while (turn_num < loop_budget) or (loop_budget == -1):
         turn_num += 1
         FancyLogger.get_logger().info(f"## ReACT TURN NUMBER {turn_num}")
+
+        if on_turn is not None:
+            context = on_turn(turn_num, loop_budget, context)
 
         step, next_context = await mfuncs.aact(
             action=ReactThought(),
