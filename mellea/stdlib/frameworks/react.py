@@ -21,6 +21,34 @@ from mellea.stdlib.components.react import (
 from mellea.stdlib.context import ChatContext
 
 
+def _compress_old_tool_outputs(context: ChatContext) -> ChatContext:
+    """Replace old tool outputs with short summaries to free context window."""
+    from mellea.stdlib.components.chat import Message
+
+    messages = context.view_for_generation()
+    if messages is None or len(messages) < 6:
+        return context
+
+    new_ctx = ChatContext()
+    # Keep first 2 messages (system + goal) and last 4 messages verbatim.
+    # Compress everything in between.
+    keep_tail = 4
+    for i, msg in enumerate(messages):
+        if i < 2 or i >= len(messages) - keep_tail:
+            new_ctx = new_ctx.add(msg)
+        elif isinstance(msg, ToolMessage) and len(str(msg.content)) > 200:
+            summary = str(msg.content)[:150] + "..."
+            compressed = ToolMessage(
+                name=msg.name,
+                content=f"[compressed] {summary}",
+                tool_call_id=getattr(msg, "tool_call_id", None),
+            )
+            new_ctx = new_ctx.add(compressed)
+        else:
+            new_ctx = new_ctx.add(msg)
+    return new_ctx
+
+
 async def react(
     goal: str,
     context: ChatContext,
@@ -75,10 +103,17 @@ async def react(
 
     context = context.add(ReactInitiator(goal, tools))
 
+    import os
+
+    compress_context = os.environ.get("MCODE_COMPRESS_CONTEXT", "0") == "1"
+
     turn_num = 0
     while (turn_num < loop_budget) or (loop_budget == -1):
         turn_num += 1
         FancyLogger.get_logger().info(f"## ReACT TURN NUMBER {turn_num}")
+
+        if compress_context and turn_num == max(3, loop_budget // 2):
+            context = _compress_old_tool_outputs(context)
 
         if on_turn is not None:
             context = on_turn(turn_num, loop_budget, context)
