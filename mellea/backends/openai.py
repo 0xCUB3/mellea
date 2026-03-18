@@ -61,6 +61,48 @@ if TYPE_CHECKING:
 
 openai_ollama_batching_error = "json: cannot unmarshal array into Go struct field CompletionRequest.prompt of type string"
 
+
+def _fix_tool_call_ordering(conversation: list[dict]) -> list[dict]:
+    """Ensure tool messages are properly linked to preceding assistant tool_calls.
+
+    Some models (MiniMax M2.5) strictly require that every tool-role message
+    is preceded by an assistant message containing a matching tool_calls entry,
+    and that tool messages include a tool_call_id field. This function patches
+    the conversation to satisfy those constraints.
+    """
+    import uuid
+
+    fixed: list[dict] = []
+    for i, msg in enumerate(conversation):
+        if msg.get("role") == "tool":
+            # Ensure this tool message has a tool_call_id.
+            if "tool_call_id" not in msg or not msg["tool_call_id"]:
+                call_id = f"call_{uuid.uuid4().hex[:24]}"
+                msg["tool_call_id"] = call_id
+
+            # Check if the preceding message is an assistant with tool_calls.
+            if fixed and fixed[-1].get("role") == "assistant":
+                prev = fixed[-1]
+                if "tool_calls" not in prev or prev["tool_calls"] is None:
+                    # Reconstruct a synthetic tool_calls entry.
+                    prev["tool_calls"] = []
+                    # Content must be null when tool_calls is present for some models.
+                    if not prev.get("content"):
+                        prev["content"] = None
+                prev["tool_calls"].append(
+                    {
+                        "id": msg["tool_call_id"],
+                        "type": "function",
+                        "function": {
+                            "name": msg.get("name", "unknown"),
+                            "arguments": "{}",
+                        },
+                    }
+                )
+        fixed.append(msg)
+    return fixed
+
+
 format: None = None  # typing this variable in order to shadow the global format function and ensure mypy checks for errors
 
 
@@ -387,6 +429,11 @@ class OpenAIBackend(FormatterBackend):
         if system_prompt != "":
             conversation.append({"role": "system", "content": system_prompt})
         conversation.extend([message_to_openai_message(m) for m in messages])
+
+        # Fix tool call ordering for strict models (e.g. MiniMax M2.5).
+        # Ensure assistant messages preceding tool responses include tool_calls,
+        # and that tool responses have tool_call_id fields.
+        conversation = _fix_tool_call_ordering(conversation)
 
         extra_params: dict[str, Any] = {}
         if _format is not None:
