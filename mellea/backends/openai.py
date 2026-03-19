@@ -63,30 +63,27 @@ openai_ollama_batching_error = "json: cannot unmarshal array into Go struct fiel
 
 
 def _fix_tool_call_ordering(conversation: list[dict]) -> list[dict]:
-    """Ensure tool messages are properly linked to preceding assistant tool_calls.
+    """Fix message ordering for models with strict chat template validation.
 
-    Some models (MiniMax M2.5) strictly require that every tool-role message
-    is preceded by an assistant message containing a matching tool_calls entry,
-    and that tool messages include a tool_call_id field. This function patches
-    the conversation to satisfy those constraints.
+    Handles two constraints that models like MiniMax M2.5 and Mistral enforce:
+    1. Every tool-role message must be preceded by an assistant message with
+       a matching tool_calls entry, and must include a tool_call_id.
+    2. A user-role message cannot directly follow a tool-role message.
+       An assistant message must appear between them.
     """
     import uuid
 
     fixed: list[dict] = []
-    for i, msg in enumerate(conversation):
+    for msg in conversation:
         if msg.get("role") == "tool":
-            # Ensure this tool message has a tool_call_id.
             if "tool_call_id" not in msg or not msg["tool_call_id"]:
                 call_id = f"call_{uuid.uuid4().hex[:24]}"
                 msg["tool_call_id"] = call_id
 
-            # Check if the preceding message is an assistant with tool_calls.
             if fixed and fixed[-1].get("role") == "assistant":
                 prev = fixed[-1]
                 if "tool_calls" not in prev or prev["tool_calls"] is None:
-                    # Reconstruct a synthetic tool_calls entry.
                     prev["tool_calls"] = []
-                    # Content must be null when tool_calls is present for some models.
                     if not prev.get("content"):
                         prev["content"] = None
                 prev["tool_calls"].append(
@@ -99,6 +96,11 @@ def _fix_tool_call_ordering(conversation: list[dict]) -> list[dict]:
                         },
                     }
                 )
+
+        # Insert a synthetic assistant message between tool and user messages.
+        if msg.get("role") in ("user",) and fixed and fixed[-1].get("role") == "tool":
+            fixed.append({"role": "assistant", "content": "Continuing."})
+
         fixed.append(msg)
     return fixed
 
