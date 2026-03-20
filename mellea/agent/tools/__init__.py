@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from mellea.agent.tools.bash import run_bash
 from mellea.agent.tools.edit import str_replace_edit
 from mellea.agent.tools.navigate import find_file, list_dir
 from mellea.agent.tools.read import read_file
@@ -58,13 +59,22 @@ def make_agent_tools(
         """List directory contents."""
         return list_dir(path, repo_root=repo_root)
 
-    tools = {
+    use_bash = os.environ.get("MELLEA_BASH_TOOL", "0") == "1"
+
+    def _bash(command: str) -> str:
+        """Run a bash command in the repo and return its output. Use for grep, find, git, python, pytest, or any shell command."""
+        return run_bash(command, repo_root=repo_root)
+
+    tools: dict[str, object] = {
         "search_code": _search,
         "edit": _edit,
         "read_file": _read,
         "find_file": _find,
         "list_dir": _list,
     }
+
+    if use_bash:
+        tools["bash"] = _bash
 
     if test_fn is not None:
 
