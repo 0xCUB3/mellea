@@ -32,26 +32,32 @@ def test_long_trajectories_condense_into_structured_summaries():
 
     assert should_condense_messages(messages, max_messages=6, preserve_recent=2)
 
-    condensed = condense_messages(messages, working_memory=memory, preserve_recent=2)
+    condensed = condense_messages(
+        messages,
+        working_memory=memory,
+        max_messages=6,
+        preserve_recent=4,
+    )
     rendered = materialize_messages(
         system_prompt="sys",
         goal="Recover the service",
         condensed_state=condensed,
     )
 
-    assert condensed.omitted_messages == 4
-    assert condensed.recent_messages == tuple(messages[-2:])
+    assert condensed.omitted_messages == 3
+    assert condensed.recent_messages == tuple(messages[-3:])
     assert rendered[:2] == [
         {"role": "system", "content": "sys"},
         {"role": "user", "content": "Recover the service"},
     ]
+    assert len(rendered) == 6
     assert rendered[2]["role"] == "user"
     assert "Condensed context" in rendered[2]["content"]
     assert "Summary:" in rendered[2]["content"]
     assert "- Requests to /items fail with a 502 upstream error." in rendered[2]["content"]
     assert "Hypotheses:" in rendered[2]["content"]
     assert "Next steps:" in rendered[2]["content"]
-    assert rendered[-2:] == messages[-2:]
+    assert rendered[-3:] == messages[-3:]
 
 
 def test_working_memory_retains_key_facts_hypotheses_and_next_steps():
@@ -75,16 +81,47 @@ def test_working_memory_retains_key_facts_hypotheses_and_next_steps():
         ],
     }
 
-    reminder = memory.as_message(omitted_messages=5)
+    reminder = memory.as_message(omitted_messages=1)
 
     assert reminder["role"] == "user"
-    assert "5 earlier messages were condensed." in reminder["content"]
+    assert "1 earlier message was condensed." in reminder["content"]
     assert "- Task 4 introduced runtime event primitives." in reminder["content"]
     assert "- Memory can be injected as a synthetic user reminder." in reminder["content"]
     assert "- Keep recent turns verbatim." in reminder["content"]
 
 
 def test_materialize_messages_without_condensed_state_keeps_default_shape():
+    assert materialize_messages(system_prompt="sys", goal="Solve it") == [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "Solve it"},
+    ]
+
+
+def test_short_histories_round_trip_without_condensed_reminder():
+    messages = [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "Solve it"},
+        {"role": "assistant", "content": "I checked the logs."},
+    ]
+
+    assert not should_condense_messages(messages, max_messages=6)
+
+    condensed = condense_messages(
+        messages,
+        working_memory=WorkingMemory(summary="Already investigated."),
+        max_messages=6,
+    )
+
+    assert condensed.omitted_messages == 0
+    assert condensed.recent_messages == tuple(messages[2:])
+    assert materialize_messages(
+        system_prompt="sys",
+        goal="Solve it",
+        condensed_state=condensed,
+    ) == messages
+
+
+def test_materialize_messages_with_condensed_state_includes_reminder_and_tail():
     assert materialize_messages(system_prompt="sys", goal="Solve it") == [
         {"role": "system", "content": "sys"},
         {"role": "user", "content": "Solve it"},
