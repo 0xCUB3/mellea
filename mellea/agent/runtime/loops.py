@@ -199,7 +199,7 @@ async def run_observe_act_verify_loop(
             except Exception as exc:
                 termination = _emit_termination(
                     event_log=event_log,
-                    reason=TerminationReason.TOOL_ERROR,
+                    reason=TerminationReason.RUNTIME_ERROR,
                     detail=f"{type(exc).__name__}: {exc}",
                 )
                 return LoopResult(
@@ -222,7 +222,7 @@ async def run_observe_act_verify_loop(
             except Exception as exc:
                 termination = _emit_termination(
                     event_log=event_log,
-                    reason=TerminationReason.TOOL_ERROR,
+                    reason=TerminationReason.RUNTIME_ERROR,
                     detail=f"{type(exc).__name__}: {exc}",
                 )
                 return LoopResult(

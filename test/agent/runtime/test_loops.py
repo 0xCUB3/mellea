@@ -111,6 +111,46 @@ async def test_loop_result_tracks_retry_usage_and_budget_termination():
     ]
 
 
+@pytest.mark.asyncio
+async def test_unexpected_loop_exceptions_terminate_as_runtime_errors():
+    event_log = EventLog()
+
+    async def observe(state: dict[str, int], ctx) -> int:
+        del ctx
+        raise RuntimeError(f"broken state {state['value']}")
+
+    async def act(state: dict[str, int], observation: int, ctx) -> int:
+        del state, observation, ctx
+        raise AssertionError("unreachable")
+
+    async def verify(state: dict[str, int], observation: int, action: int, ctx):
+        del state, observation, action, ctx
+        raise AssertionError("unreachable")
+
+    result = await run_observe_act_verify_loop(
+        initial_state={"value": 7},
+        budget=LoopBudget(max_turns=3),
+        observe=observe,
+        act=act,
+        verify=verify,
+        event_log=event_log,
+    )
+
+    assert result.completed is False
+    assert result.state == {"value": 7}
+    assert result.turns == 1
+    assert result.retries == 0
+    assert result.termination.reason is TerminationReason.RUNTIME_ERROR
+    assert result.termination.detail == "RuntimeError: broken state 7"
+    assert event_log.to_dicts() == [
+        {
+            "kind": "termination",
+            "reason": "runtime_error",
+            "detail": "RuntimeError: broken state 7",
+        }
+    ]
+
+
 def test_build_loop_messages_can_condense_history_and_emit_runtime_events():
     event_log = EventLog()
 

@@ -19,6 +19,7 @@ class TerminationReason(StrEnum):
 
     FINAL_ANSWER = "final_answer"
     MAX_TURNS = "max_turns"
+    RUNTIME_ERROR = "runtime_error"
     TOOL_ERROR = "tool_error"
     CANCELLED = "cancelled"
 
