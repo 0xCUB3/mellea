@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 from mellea.agent.runtime import (
@@ -135,3 +138,34 @@ def test_event_log_works_without_benchmark_stack():
             },
         ],
     }
+
+
+def test_runtime_import_does_not_preload_unrelated_modules():
+    repo_root = Path(__file__).resolve().parents[2]
+    script = """
+import importlib
+import json
+import sys
+
+importlib.import_module("mellea.agent.runtime")
+
+unrelated = sorted(
+    name
+    for name in sys.modules
+    if name in {"mellea.backends", "mellea.stdlib.session"}
+    or name.startswith("mellea.backends.")
+    or name.startswith("mellea.stdlib.session.")
+)
+print(json.dumps(unrelated))
+"""
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == []
