@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from mellea.agent.tools import make_agent_tools
+from mellea.agent.tools.testing import run_tests
 
 
 def test_make_agent_tools_returns_mellea_tools(tmp_path: Path) -> None:
@@ -33,3 +35,29 @@ def test_custom_test_fn_results_use_standard_format(tmp_path: Path) -> None:
     result = tool_map["run_tests"].run("default")
 
     assert result == "$ default\nCOMPLETED\nran default"
+
+
+def test_run_tests_timeout_uses_standard_format(
+    tmp_path: Path, monkeypatch
+) -> None:
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd="pytest -q", timeout=120)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = run_tests("default", repo_root=str(tmp_path), test_cmds=["pytest -q"])
+
+    assert result == "$ pytest -q\nTIMEOUT after 120s\n(no output)"
+
+
+def test_run_tests_oserror_uses_standard_format(
+    tmp_path: Path, monkeypatch
+) -> None:
+    def fake_run(*args, **kwargs):
+        raise OSError("boom")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = run_tests("default", repo_root=str(tmp_path), test_cmds=["pytest -q"])
+
+    assert result == "$ pytest -q\nERROR\nError: boom"
