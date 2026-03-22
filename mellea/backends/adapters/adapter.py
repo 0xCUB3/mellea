@@ -17,7 +17,7 @@ import yaml
 
 from ...core import Backend
 from ...formatters.granite import intrinsics as intrinsics
-from ...helpers import _ServerType
+from ...helpers.server_type import _ServerType
 from .catalog import AdapterType, fetch_intrinsic_metadata
 
 
