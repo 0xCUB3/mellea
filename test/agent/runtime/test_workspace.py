@@ -18,6 +18,10 @@ from mellea.agent.runtime import (
 )
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
 def test_workspace_describes_execution_context():
     workspace = Workspace(
         cwd="/repo/project",
@@ -141,7 +145,9 @@ def test_event_log_works_without_benchmark_stack():
 
 
 def test_runtime_import_does_not_preload_unrelated_modules():
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = _repo_root()
+    assert (repo_root / "pyproject.toml").is_file()
+
     script = """
 import importlib
 import json
@@ -169,3 +175,33 @@ print(json.dumps(unrelated))
 
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == []
+
+
+def test_top_level_mellea_exports_remain_available():
+    repo_root = _repo_root()
+    assert (repo_root / "pyproject.toml").is_file()
+
+    script = """
+from mellea import MelleaSession, generative, model_ids, start_session
+
+print(MelleaSession.__name__)
+print(generative.__name__)
+print(model_ids.__name__)
+print(start_session.__name__)
+"""
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "MelleaSession",
+        "generative",
+        "mellea.backends.model_ids",
+        "start_session",
+    ]
