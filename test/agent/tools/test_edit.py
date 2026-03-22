@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mellea.agent.tools import make_agent_tools
 from mellea.agent.tools.edit import str_replace_edit
 
 
@@ -53,3 +54,54 @@ def test_edit_works_for_non_python(tmp_path: Path) -> None:
     )
     assert "return 2;" in f.read_text()
     assert "Successfully" in result
+
+
+def test_coding_tools_include_shell_by_default(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("MELLEA_BASH_TOOL", raising=False)
+
+    tool_map = {tool.name: tool for tool in make_agent_tools(str(tmp_path))}
+
+    assert "bash" in tool_map
+    result = tool_map["bash"].run("echo hello")
+    assert result.startswith("$ echo hello\nPASSED\n")
+    assert "hello" in result
+
+
+def test_edit_uses_forgiving_match_when_exact_string_misses(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("MCODE_FUZZY_EDIT", raising=False)
+    f = tmp_path / "foo.py"
+    f.write_text("def hello():\n    return 1\n")
+
+    result = str_replace_edit(
+        str(f),
+        old_str="def hello():\n  return 1",
+        new_str="def hello():\n  return 2",
+        repo_root=str(tmp_path),
+    )
+
+    assert f.read_text() == "def hello():\n  return 2\n"
+    assert "fallback" in result.lower()
+
+
+def test_edit_rolls_back_when_forgiving_match_breaks_syntax(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("MCODE_FUZZY_EDIT", raising=False)
+    f = tmp_path / "foo.py"
+    original = "def hello():\n    return 1\n"
+    f.write_text(original)
+
+    result = str_replace_edit(
+        str(f),
+        old_str="def hello():\n  return 1",
+        new_str="def hello():\n  return (",
+        repo_root=str(tmp_path),
+    )
+
+    assert f.read_text() == original
+    assert "syntax" in result.lower()
+    assert "unchanged" in result.lower()
