@@ -205,3 +205,29 @@ print(start_session.__name__)
         "mellea.backends.model_ids",
         "start_session",
     ]
+
+
+def test_top_level_model_ids_does_not_depend_on_backends_package_attribute():
+    repo_root = _repo_root()
+    assert (repo_root / "pyproject.toml").is_file()
+
+    script = """
+import mellea
+import mellea.backends
+
+if hasattr(mellea.backends, "model_ids"):
+    delattr(mellea.backends, "model_ids")
+
+print(mellea.model_ids.__name__)
+"""
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["mellea.backends.model_ids"]

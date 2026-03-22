@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 _EXPORTS = {
     "MelleaSession": ("mellea.stdlib.session", "MelleaSession"),
     "generative": ("mellea.stdlib.components.genslot", "generative"),
-    "model_ids": ("mellea.backends", "model_ids"),
+    "model_ids": ("mellea.backends.model_ids", None),
     "start_session": ("mellea.stdlib.session", "start_session"),
 }
 
@@ -26,7 +26,8 @@ def __getattr__(name: str) -> Any:
     except KeyError as exc:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
 
-    value = getattr(import_module(module_name), attr_name)
+    module = import_module(module_name)
+    value = module if attr_name is None else getattr(module, attr_name)
     globals()[name] = value
     return value
 
