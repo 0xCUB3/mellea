@@ -38,10 +38,16 @@ def _truncate_output(output: str) -> str:
     )
 
 
-def _format_command_output(command: str, status: str, output: str) -> str:
-    """Return command output in the same status-first shape as test execution."""
+def format_tool_result(command: str, status: str, output: str) -> str:
+    """Return tool output in the shared command/status/body format."""
     body = output.rstrip() if output.strip() else "(no output)"
     return f"$ {command}\n{status}\n{body}"
+
+
+def is_tool_result(output: str) -> bool:
+    """Return True when output already uses the shared tool-result format."""
+    lines = output.splitlines()
+    return len(lines) >= 2 and lines[0].startswith("$ ") and bool(lines[1].strip())
 
 
 def _run_shell_command(
@@ -123,7 +129,7 @@ def run_command(
         timeout=timeout,
         allowed_dirs=allowed_dirs,
     )
-    return _format_command_output(command, status, output)
+    return format_tool_result(command, status, output)
 
 
 def run_bash(

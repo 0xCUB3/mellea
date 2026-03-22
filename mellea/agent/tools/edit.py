@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from mellea.agent.tools.bash import format_tool_result
+
 _EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".py": "python",
     ".js": "javascript",
@@ -101,7 +103,7 @@ def _fuzzy_find(content: str, old_str: str) -> str | None:
 
 def _format_edit_result(status: str, path: str, detail: str) -> str:
     """Return edit results in a consistent status-first format."""
-    return f"EDIT {status}\n{path}\n{detail}"
+    return format_tool_result(f"edit {path}", status, detail)
 
 
 def str_replace_edit(path: str, old_str: str, new_str: str, *, repo_root: str) -> str:

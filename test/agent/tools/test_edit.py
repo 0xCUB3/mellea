@@ -13,6 +13,7 @@ def test_edit_replaces_unique_string(tmp_path: Path) -> None:
         str(f), old_str="return 1", new_str="return 2", repo_root=str(tmp_path)
     )
     assert "return 2" in f.read_text()
+    assert result.startswith(f"$ edit {f}\nAPPLIED\n")
     assert "Successfully" in result
 
 
@@ -33,6 +34,7 @@ def test_edit_rejects_missing_match(tmp_path: Path) -> None:
         str(f), old_str="y = 2", new_str="y = 3", repo_root=str(tmp_path)
     )
     assert "x = 1" in f.read_text()
+    assert result.startswith(f"$ edit {f}\nREJECTED\n")
     assert "not found" in result.lower()
 
 

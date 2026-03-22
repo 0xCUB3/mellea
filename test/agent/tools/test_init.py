@@ -21,3 +21,15 @@ def test_tools_are_callable(tmp_path: Path) -> None:
     tools = make_agent_tools(str(tmp_path))
     for t in tools:
         assert callable(t.run)
+
+
+def test_custom_test_fn_results_use_standard_format(tmp_path: Path) -> None:
+    tools = make_agent_tools(
+        str(tmp_path),
+        test_fn=lambda test_cmd: f"ran {test_cmd}",
+    )
+    tool_map = {tool.name: tool for tool in tools}
+
+    result = tool_map["run_tests"].run("default")
+
+    assert result == "$ default\nCOMPLETED\nran default"

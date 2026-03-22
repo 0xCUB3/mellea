@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from mellea.agent.tools.bash import run_command
+from mellea.agent.tools.bash import format_tool_result, is_tool_result, run_command
 from mellea.agent.tools.edit import str_replace_edit
 from mellea.agent.tools.navigate import find_file, list_dir
 from mellea.agent.tools.read import read_file
@@ -80,7 +80,10 @@ def make_agent_tools(
 
         def _run_tests_fn(test_cmd: str = "default") -> str:
             """Run tests to check if your fix works. Pass 'default' to run the task's test suite, or a custom pytest/test command."""
-            return test_fn(test_cmd)
+            result = test_fn(test_cmd)
+            if is_tool_result(result):
+                return result
+            return format_tool_result(test_cmd, "COMPLETED", result)
 
         tools["run_tests"] = _run_tests_fn
 
