@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import tempfile
 
-from mellea.agent.tools.bash import run_bash
+from mellea.agent.tools.bash import run_bash, run_command
 
 
 def test_basic_command():
@@ -42,3 +42,16 @@ def test_allowed_dirs():
     with tempfile.TemporaryDirectory() as d:
         result = run_bash("cat /etc/passwd", repo_root=d, allowed_dirs=["/tmp"])
         assert "outside allowed" in result
+
+
+def test_pipeline_failure_reports_failed_status():
+    with tempfile.TemporaryDirectory() as d:
+        result = run_command(
+            "python -c 'import sys; print(\"boom\"); sys.exit(7)' | head -1",
+            repo_root=d,
+        )
+
+    assert result.startswith(
+        "$ python -c 'import sys; print(\"boom\"); sys.exit(7)' | head -1\nFAILED (exit 7)\n"
+    )
+    assert "boom" in result

@@ -98,7 +98,7 @@ def _run_shell_command(
 
     try:
         result = subprocess.run(
-            ["bash", "-c", command],
+            ["bash", "-o", "pipefail", "-c", command],
             cwd=str(root),
             capture_output=True,
             text=True,
