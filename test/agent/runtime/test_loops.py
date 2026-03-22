@@ -151,6 +151,54 @@ async def test_unexpected_loop_exceptions_terminate_as_runtime_errors():
     ]
 
 
+@pytest.mark.asyncio
+async def test_retry_budget_exhaustion_uses_retry_termination_reason():
+    event_log = EventLog()
+
+    async def observe(state: dict[str, int], ctx) -> str:
+        del state, ctx
+        return "poll"
+
+    async def act(state: dict[str, int], observation: str, ctx) -> str:
+        del state, observation, ctx
+        return "retry"
+
+    async def verify(state: dict[str, int], observation: str, action: str, ctx):
+        del observation, action, ctx
+        return LoopRetry(
+            state=state,
+            detail="model backend timed out",
+            termination_reason=TerminationReason.RUNTIME_ERROR,
+        )
+
+    result = await run_observe_act_verify_loop(
+        initial_state={"value": 1},
+        budget=LoopBudget(max_turns=1, max_retries_per_turn=1),
+        observe=observe,
+        act=act,
+        verify=verify,
+        event_log=event_log,
+    )
+
+    assert result.completed is False
+    assert result.turns == 1
+    assert result.retries == 1
+    assert result.termination.reason is TerminationReason.RUNTIME_ERROR
+    assert result.termination.detail == "model backend timed out"
+    assert event_log.to_dicts() == [
+        {
+            "kind": "summary",
+            "message": "Retrying loop turn",
+            "metadata": {"turn": 1, "attempt": 1, "detail": "model backend timed out"},
+        },
+        {
+            "kind": "termination",
+            "reason": "runtime_error",
+            "detail": "model backend timed out",
+        },
+    ]
+
+
 def test_build_loop_messages_can_condense_history_and_emit_runtime_events():
     event_log = EventLog()
 

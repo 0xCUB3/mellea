@@ -63,6 +63,7 @@ class LoopRetry(Generic[StateT]):
 
     state: StateT
     detail: str | None = None
+    termination_reason: TerminationReason = TerminationReason.RUNTIME_ERROR
 
 
 @dataclass(frozen=True)
@@ -239,7 +240,7 @@ async def run_observe_act_verify_loop(
                 if attempt >= max_attempts:
                     termination = _emit_termination(
                         event_log=event_log,
-                        reason=TerminationReason.TOOL_ERROR,
+                        reason=decision.termination_reason,
                         detail=decision.detail or "Loop retry budget exhausted.",
                     )
                     return LoopResult(
