@@ -9,11 +9,11 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 
+from mellea.agent.runtime.memory import CondensedState, materialize_messages
 from mellea.agent.text_tool_calling import format_tools_for_prompt, parse_tool_calls
 from mellea.backends.model_options import ModelOption
-from mellea.core.base import AbstractMelleaTool, ModelToolCall
+from mellea.core.base import AbstractMelleaTool
 from mellea.core.utils import FancyLogger
-from mellea.stdlib.components.chat import ToolMessage
 
 
 async def text_react(
@@ -25,6 +25,7 @@ async def text_react(
     model_options: dict | None = None,
     loop_budget: int = 15,
     on_turn: Callable[[int, int, list[dict]], list[dict]] | None = None,
+    condensed_state: CondensedState | None = None,
 ) -> tuple[str, bool]:
     """Run a text-based ReAct loop.
 
@@ -65,10 +66,11 @@ async def text_react(
     if tool_prompt:
         full_system = f"{system_prompt}\n\n{tool_prompt}"
 
-    messages: list[dict] = [
-        {"role": "system", "content": full_system},
-        {"role": "user", "content": goal},
-    ]
+    messages = materialize_messages(
+        system_prompt=full_system,
+        goal=goal,
+        condensed_state=condensed_state,
+    )
 
     for turn in range(1, loop_budget + 1):
         FancyLogger.get_logger().info(f"## TEXT REACT TURN {turn}")
