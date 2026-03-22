@@ -10,6 +10,7 @@ import os
 from collections.abc import Callable
 
 from mellea.agent.text_tool_calling import format_tools_for_prompt, parse_tool_calls
+from mellea.backends.model_options import ModelOption
 from mellea.core.base import AbstractMelleaTool, ModelToolCall
 from mellea.core.utils import FancyLogger
 from mellea.stdlib.components.chat import ToolMessage
@@ -45,9 +46,20 @@ async def text_react(
     client = AsyncOpenAI(base_url=base_url, api_key=api_key)
 
     max_tokens = 4096
-    raw = os.environ.get("MCODE_MAX_NEW_TOKENS")
-    if raw:
-        max_tokens = int(raw)
+    if model_options is not None and model_options.get(ModelOption.MAX_NEW_TOKENS) is not None:
+        max_tokens = int(model_options[ModelOption.MAX_NEW_TOKENS])
+    else:
+        raw = os.environ.get("MCODE_MAX_NEW_TOKENS")
+        if raw:
+            max_tokens = int(raw)
+
+    temperature = 0.0
+    if model_options is not None and model_options.get(ModelOption.TEMPERATURE) is not None:
+        temperature = float(model_options[ModelOption.TEMPERATURE])
+
+    seed = None
+    if model_options is not None:
+        seed = model_options.get(ModelOption.SEED)
 
     full_system = system_prompt
     if tool_prompt:
@@ -69,8 +81,9 @@ async def text_react(
                 model=model_id,
                 messages=messages,
                 max_tokens=max_tokens,
-                temperature=0.0,
+                temperature=temperature,
                 timeout=120,
+                seed=seed,
             )
             text = response.choices[0].message.content or ""
         except Exception as e:
