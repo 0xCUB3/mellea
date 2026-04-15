@@ -7,7 +7,8 @@ from typing import Any
 from ..backends.tools import validate_tool_arguments
 from ..core import FancyLogger, ModelToolCall
 from ..core.base import AbstractMelleaTool
-from ..stdlib.components import Document, Message
+from ..stdlib.components.chat import Message
+from ..stdlib.components.docs.document import Document
 
 
 def extract_model_tool_requests(

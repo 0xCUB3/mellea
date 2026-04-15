@@ -2,6 +2,10 @@
 
 import base64
 import json
+import subprocess
+import sys
+import textwrap
+from pathlib import Path
 
 import pytest
 
@@ -45,6 +49,10 @@ def _response_with_tool_calls(calls: list[dict]) -> dict:
 
 def _tool_call(name: str, arguments: str | None) -> dict:
     return {"function": {"name": name, "arguments": arguments}}
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
 
 
 # --- extract_model_tool_requests ---
@@ -139,6 +147,27 @@ class TestExtractModelToolRequests:
         response = _response_with_tool_calls([_tool_call("get_weather", '{"broken')])
         with pytest.raises(json.JSONDecodeError):
             extract_model_tool_requests(tools, response)
+
+    def test_importing_helpers_does_not_circular_import(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                textwrap.dedent(
+                    """
+                    import mellea.helpers
+                    print("ok")
+                    """
+                ),
+            ],
+            cwd=_repo_root(),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "ok"
 
 
 # --- chat_completion_delta_merge ---
