@@ -97,3 +97,17 @@ class Workspace:
             "session": self.session.describe(),
             "metadata": _copy_metadata(self.metadata),
         }
+
+
+def format_workspace_state(workspace: Workspace | None) -> str | None:
+    """Return a short workspace reminder for tool results."""
+    if workspace is None:
+        return None
+
+    display_cwd = workspace.metadata.get("display_cwd")
+    cwd = str(display_cwd) if display_cwd else str(workspace.cwd)
+    return (
+        "Runtime state:\n"
+        f"Current working directory: {cwd}\n"
+        "Use relative paths from this directory unless a tool explicitly requires an absolute path."
+    )

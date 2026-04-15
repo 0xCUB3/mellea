@@ -15,6 +15,7 @@ from mellea.agent.runtime import (
     ToolCallEvent,
     ToolResultEvent,
     Workspace,
+    format_workspace_state,
 )
 
 
@@ -57,6 +58,21 @@ def test_workspace_describes_execution_context():
         },
         "metadata": {"task_id": "task-4"},
     }
+
+
+def test_format_workspace_state_prefers_display_cwd():
+    workspace = Workspace(
+        cwd="/repo/project",
+        safety_policy=SafetyPolicy(mode="workspace-write"),
+        session=SessionMetadata(session_id="sess-123"),
+        metadata={"display_cwd": "/testbed"},
+    )
+
+    assert format_workspace_state(workspace) == (
+        "Runtime state:\n"
+        "Current working directory: /testbed\n"
+        "Use relative paths from this directory unless a tool explicitly requires an absolute path."
+    )
 
 
 def test_tool_actions_emit_structured_events():

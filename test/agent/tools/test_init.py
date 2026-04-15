@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from mellea.agent.runtime import SafetyPolicy, SessionMetadata, Workspace
 from mellea.agent.tools import make_agent_tools
 from mellea.agent.tools.testing import run_tests
 
@@ -35,6 +36,31 @@ def test_custom_test_fn_results_use_standard_format(tmp_path: Path) -> None:
     result = tool_map["run_tests"].run("default")
 
     assert result == "$ default\nCOMPLETED\nran default"
+
+
+def test_make_agent_tools_uses_command_fn_for_bash(tmp_path: Path) -> None:
+    commands: list[str] = []
+    workspace = Workspace(
+        cwd=tmp_path,
+        safety_policy=SafetyPolicy(mode="workspace-write", writable_roots=(tmp_path,)),
+        session=SessionMetadata(session_id="sess-1"),
+        metadata={"display_cwd": "/testbed"},
+    )
+    tools = make_agent_tools(
+        str(tmp_path),
+        command_fn=lambda command: commands.append(command) or f"ran {command}",
+        workspace=workspace,
+    )
+    tool_map = {tool.name: tool for tool in tools}
+
+    result = tool_map["bash"].run("pwd")
+
+    assert commands == ["pwd"]
+    assert result == (
+        "$ pwd\nCOMPLETED\nran pwd\n\nRuntime state:\n"
+        "Current working directory: /testbed\n"
+        "Use relative paths from this directory unless a tool explicitly requires an absolute path."
+    )
 
 
 def test_run_tests_timeout_uses_standard_format(

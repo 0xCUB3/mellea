@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from mellea.agent.runtime.workspace import Workspace, format_workspace_state
 from mellea.agent.tools.bash import format_tool_result, is_tool_result, run_command
 from mellea.agent.tools.edit import str_replace_edit
 from mellea.agent.tools.navigate import find_file, list_dir
@@ -18,6 +19,8 @@ def make_agent_tools(
     *,
     test_cmds: list[str] | None = None,
     test_fn: Callable[[str], str] | None = None,
+    command_fn: Callable[[str], str] | None = None,
+    workspace: Workspace | None = None,
 ) -> list[MelleaTool]:
     """Create the standard set of agent tools bound to a repo root.
 
@@ -29,6 +32,17 @@ def make_agent_tools(
 
     read_counts: dict[str, int] = {}
     read_nudge = os.environ.get("MCODE_READ_NUDGE", "1") == "1"
+    workspace_state = format_workspace_state(workspace)
+    allowed_dirs = (
+        [str(path) for path in workspace.safety_policy.writable_roots]
+        if workspace is not None and workspace.safety_policy.writable_roots
+        else [repo_root]
+    )
+
+    def _annotate(result: str) -> str:
+        if workspace_state is None or workspace_state in result:
+            return result
+        return f"{result}\n\n{workspace_state}"
 
     def _search(query: str) -> str:
         """Search for a regex pattern across all files in the repo using ripgrep."""
@@ -63,7 +77,14 @@ def make_agent_tools(
 
     def _bash(command: str) -> str:
         """Run a bash command in the repo and return its output. Use for grep, find, git, python, pytest, or any shell command."""
-        return run_command(command, repo_root=repo_root)
+        if command_fn is not None:
+            result = command_fn(command)
+            if not is_tool_result(result):
+                result = format_tool_result(command, "COMPLETED", result)
+            return _annotate(result)
+        return _annotate(
+            run_command(command, repo_root=repo_root, allowed_dirs=allowed_dirs)
+        )
 
     tools: dict[str, Callable[..., str]] = {
         "search_code": _search,
@@ -82,8 +103,8 @@ def make_agent_tools(
             """Run tests to check if your fix works. Pass 'default' to run the task's test suite, or a custom pytest/test command."""
             result = test_fn(test_cmd)
             if is_tool_result(result):
-                return result
-            return format_tool_result(test_cmd, "COMPLETED", result)
+                return _annotate(result)
+            return _annotate(format_tool_result(test_cmd, "COMPLETED", result))
 
         tools["run_tests"] = _run_tests_fn
 
@@ -91,7 +112,9 @@ def make_agent_tools(
 
         def _run_tests(test_cmd: str = "default") -> str:
             """Run tests to check if your fix works. Pass 'default' to run the task's test suite, or a custom pytest/test command."""
-            return run_tests(test_cmd, repo_root=repo_root, test_cmds=test_cmds)
+            return _annotate(
+                run_tests(test_cmd, repo_root=repo_root, test_cmds=test_cmds)
+            )
 
         tools["run_tests"] = _run_tests
 

@@ -8,7 +8,12 @@ from mellea.agent.runtime.events import (
     ToolCallEvent,
     ToolResultEvent,
 )
-from mellea.agent.runtime.workspace import SafetyPolicy, SessionMetadata, Workspace
+from mellea.agent.runtime.workspace import (
+    SafetyPolicy,
+    SessionMetadata,
+    Workspace,
+    format_workspace_state,
+)
 
 __all__ = [
     "EventLog",
@@ -20,4 +25,5 @@ __all__ = [
     "ToolCallEvent",
     "ToolResultEvent",
     "Workspace",
+    "format_workspace_state",
 ]
