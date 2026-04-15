@@ -132,6 +132,22 @@ def run_command(
     return format_tool_result(command, status, output)
 
 
+def execute_command(
+    command: str,
+    *,
+    repo_root: str,
+    timeout: int | None = None,
+    allowed_dirs: list[str] | None = None,
+) -> tuple[str, str]:
+    """Run a shell command and return raw status plus output."""
+    return _run_shell_command(
+        command,
+        repo_root=repo_root,
+        timeout=timeout,
+        allowed_dirs=allowed_dirs,
+    )
+
+
 def run_bash(
     command: str,
     *,
