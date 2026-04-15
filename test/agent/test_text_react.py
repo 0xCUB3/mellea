@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from mellea.agent.runtime import EventLog, TerminationReason
+from mellea.agent.runtime.loops import CondensationConfig
 from mellea.agent.runtime.memory import CondensedState, WorkingMemory
 from mellea.agent.text_react import text_react
 from mellea.backends import ModelOption
@@ -165,6 +166,49 @@ def test_text_react_accepts_condensed_state(monkeypatch):
         {"role": "assistant", "content": "I narrowed the outage to staging config."},
         {"role": "user", "content": "[check_env] DB_HOST is unset"},
     ]
+
+
+def test_text_react_accepts_condensation_and_honors_tool_gate(monkeypatch):
+    monkeypatch.setattr("openai.AsyncOpenAI", _FakeAsyncOpenAI)
+    _FakeAsyncOpenAI.responses = [
+        '<tool_call>{"name": "echo", "arguments": {"text": "ping"}}</tool_call>',
+        '<tool_call>{"name": "final_answer", "arguments": {"answer": "done"}}</tool_call>',
+    ]
+    event_log = EventLog()
+
+    def tool_gate(name, args, *, messages, event_log):
+        del args, messages, event_log
+        if name == "echo":
+            return "Use a different tool before echo."
+        return None
+
+    answer, done = asyncio.run(
+        text_react(
+            goal="Debug the service",
+            backend=_FakeBackend(),
+            system_prompt="sys",
+            tools=[_EchoTool()],
+            tool_gate=tool_gate,
+            condensation=CondensationConfig(
+                working_memory=WorkingMemory(summary="trim history"),
+                max_messages=3,
+            ),
+            loop_budget=3,
+            event_log=event_log,
+        )
+    )
+
+    assert (answer, done) == ("done", True)
+    assert event_log.to_dicts() == [
+        {
+            "kind": "termination",
+            "reason": "final_answer",
+            "detail": "Model returned a final answer.",
+        },
+    ]
+    kwargs = _FakeAsyncOpenAI.last.chat.completions.kwargs
+    assert kwargs is not None
+    assert kwargs["messages"][-1] == {"role": "user", "content": "Use a different tool before echo."}
 
 
 def test_text_react_emits_runtime_events_for_tool_calls(monkeypatch):

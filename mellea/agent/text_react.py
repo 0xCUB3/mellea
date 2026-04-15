@@ -18,6 +18,7 @@ from mellea.agent.runtime.events import (
     ToolResultEvent,
 )
 from mellea.agent.runtime.loops import (
+    CondensationConfig,
     LoopBudget,
     LoopContinue,
     LoopRetry,
@@ -52,7 +53,9 @@ async def text_react(
     model_options: dict | None = None,
     loop_budget: int = 15,
     on_turn: Callable[[int, int, list[Message]], list[Message]] | None = None,
+    tool_gate: Callable[[str, dict[str, Any]], str | None] | None = None,
     condensed_state: CondensedState | None = None,
+    condensation: CondensationConfig | None = None,
     event_log: EventLog | None = None,
     max_retries_per_turn: int = 0,
 ) -> tuple[str, bool]:
@@ -99,6 +102,7 @@ async def text_react(
         system_prompt=full_system,
         goal=goal,
         condensed_state=condensed_state,
+        condensation=condensation,
         event_log=event_log,
     )
 
@@ -155,6 +159,17 @@ async def text_react(
         for call in tool_calls:
             name = call["name"]
             args = call["arguments"]
+
+            if tool_gate is not None:
+                block_message = tool_gate(
+                    name,
+                    args,
+                    messages=tuple(messages),
+                    event_log=event_log,
+                )
+                if block_message is not None:
+                    messages.append({"role": "user", "content": block_message})
+                    return LoopContinue(state=_TextReactState(messages=tuple(messages)))
 
             if name == "final_answer":
                 answer = args.get("answer", args.get("explanation", str(args)))
