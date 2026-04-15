@@ -149,8 +149,18 @@ def message_to_openai_message(msg: Message) -> dict:
     Returns:
         A dict with ``"role"`` and ``"content"`` fields. When the message carries
         images, ``"content"`` is a list of text and image-URL dicts; otherwise it
-        is a plain string.
+        is a plain string. Tool messages also include ``"name"`` and, when
+        available, ``"tool_call_id"``.
     """
+    from ..stdlib.components.chat import ToolMessage as _ToolMessage
+
+    if isinstance(msg, _ToolMessage):
+        tool_call_id = getattr(msg._tool, "id", None) if hasattr(msg, "_tool") else None
+        result: dict = {"role": "tool", "content": msg.content, "name": msg.name}
+        if tool_call_id:
+            result["tool_call_id"] = tool_call_id
+        return result
+
     if msg.images is not None:
         img_list = [
             {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img}"}}

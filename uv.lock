@@ -3148,6 +3148,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+agent = [
+    { name = "networkx" },
+    { name = "tree-sitter-language-pack" },
+]
 all = [
     { name = "accelerate" },
     { name = "boto3" },
@@ -3163,6 +3167,7 @@ all = [
     { name = "litellm" },
     { name = "llguidance" },
     { name = "llm-sandbox", extra = ["docker"] },
+    { name = "networkx" },
     { name = "opencv-python-headless" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-distro" },
@@ -3174,6 +3179,7 @@ all = [
     { name = "sentence-transformers" },
     { name = "smolagents" },
     { name = "transformers" },
+    { name = "tree-sitter-language-pack" },
     { name = "trl" },
     { name = "uvicorn" },
     { name = "xgrammar" },
@@ -3255,6 +3261,7 @@ dev = [
     { name = "mdxify" },
     { name = "mypy" },
     { name = "nbmake" },
+    { name = "networkx" },
     { name = "pdm" },
     { name = "poethepoet" },
     { name = "pre-commit" },
@@ -3270,6 +3277,7 @@ dev = [
     { name = "python-semantic-release" },
     { name = "ruff" },
     { name = "sentencepiece" },
+    { name = "tree-sitter-language-pack" },
     { name = "types-requests" },
     { name = "types-tqdm" },
 ]
@@ -3299,6 +3307,7 @@ test = [
     { name = "jsonschema" },
     { name = "langchain-community" },
     { name = "nbmake" },
+    { name = "networkx" },
     { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -3308,6 +3317,7 @@ test = [
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "sentencepiece" },
+    { name = "tree-sitter-language-pack" },
 ]
 typecheck = [
     { name = "mypy" },
@@ -3334,10 +3344,11 @@ requires-dist = [
     { name = "llguidance", marker = "extra == 'hf'" },
     { name = "llm-sandbox", extras = ["docker"], marker = "extra == 'sandbox'", specifier = ">=0.3.23" },
     { name = "math-verify" },
-    { name = "mellea", extras = ["backends", "docling", "tools", "telemetry", "server", "sandbox", "granite-retriever", "hooks"], marker = "extra == 'all'" },
+    { name = "mellea", extras = ["backends", "docling", "tools", "telemetry", "server", "sandbox", "granite-retriever", "agent", "hooks"], marker = "extra == 'all'" },
     { name = "mellea", extras = ["hooks"], marker = "extra == 'telemetry'" },
     { name = "mellea", extras = ["watsonx", "hf", "litellm"], marker = "extra == 'backends'" },
     { name = "mistletoe", specifier = ">=1.4.0" },
+    { name = "networkx", marker = "extra == 'agent'", specifier = ">=3.0" },
     { name = "nltk", specifier = ">=3.9" },
     { name = "ollama", specifier = ">=0.5.1" },
     { name = "openai" },
@@ -3358,12 +3369,13 @@ requires-dist = [
     { name = "sentence-transformers", marker = "extra == 'granite-retriever'" },
     { name = "smolagents", marker = "extra == 'tools'", specifier = ">=1.0.0" },
     { name = "transformers", marker = "extra == 'hf'", specifier = ">=4.53.2,<5" },
+    { name = "tree-sitter-language-pack", marker = "extra == 'agent'", specifier = ">=0.13" },
     { name = "trl", marker = "extra == 'hf'", specifier = "==0.19.1" },
     { name = "typer" },
     { name = "uvicorn", marker = "extra == 'server'" },
     { name = "xgrammar", marker = "extra == 'hf'" },
 ]
-provides-extras = ["hf", "litellm", "watsonx", "tools", "telemetry", "docling", "granite-retriever", "server", "sandbox", "backends", "hooks", "all"]
+provides-extras = ["hf", "litellm", "watsonx", "tools", "telemetry", "docling", "granite-retriever", "server", "sandbox", "agent", "backends", "hooks", "all"]
 
 [package.metadata.requires-dev]
 build = [{ name = "pdm", specifier = ">=2.24.0" }]
@@ -3376,6 +3388,7 @@ dev = [
     { name = "mdxify", specifier = ">=0.2.37" },
     { name = "mypy", specifier = ">=1.17.0" },
     { name = "nbmake", specifier = ">=1.5.5" },
+    { name = "networkx", specifier = ">=3.0" },
     { name = "pdm", specifier = ">=2.24.0" },
     { name = "poethepoet", specifier = ">=0.42.1" },
     { name = "pre-commit", specifier = ">=4.2.0" },
@@ -3391,6 +3404,7 @@ dev = [
     { name = "python-semantic-release", specifier = "~=7.32" },
     { name = "ruff", specifier = ">=0.15.5" },
     { name = "sentencepiece", specifier = "==0.2.1" },
+    { name = "tree-sitter-language-pack", specifier = ">=0.13" },
     { name = "types-requests" },
     { name = "types-tqdm" },
 ]
@@ -3416,6 +3430,7 @@ test = [
     { name = "jsonschema" },
     { name = "langchain-community", specifier = ">=0.3.0" },
     { name = "nbmake", specifier = ">=1.5.5" },
+    { name = "networkx", specifier = ">=3.0" },
     { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -3425,6 +3440,7 @@ test = [
     { name = "pytest-timeout" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "sentencepiece", specifier = "==0.2.1" },
+    { name = "tree-sitter-language-pack", specifier = ">=0.13" },
 ]
 typecheck = [
     { name = "mypy", specifier = ">=1.17.0" },
@@ -7372,6 +7388,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ee/89/9b773dee0f8961d1bb8d7baf0a204ab587618df19897c1ef260916f318ec/tree_sitter_javascript-0.25.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:1b852d3aee8a36186dbcc32c798b11b4869f9b5041743b63b65c2ef793db7a54", size = 98377, upload-time = "2025-09-01T07:13:41.838Z" },
     { url = "https://files.pythonhosted.org/packages/3b/dc/d90cb1790f8cec9b4878d278ad9faf7c8f893189ce0f855304fd704fc274/tree_sitter_javascript-0.25.0-cp310-abi3-win_amd64.whl", hash = "sha256:e5ed840f5bd4a3f0272e441d19429b26eedc257abe5574c8546da6b556865e3c", size = 62975, upload-time = "2025-09-01T07:13:42.828Z" },
     { url = "https://files.pythonhosted.org/packages/2e/1f/f9eba1038b7d4394410f3c0a6ec2122b590cd7acb03f196e52fa57ebbe72/tree_sitter_javascript-0.25.0-cp310-abi3-win_arm64.whl", hash = "sha256:622a69d677aa7f6ee2931d8c77c981a33f0ebb6d275aa9d43d3397c879a9bb0b", size = 61668, upload-time = "2025-09-01T07:13:43.803Z" },
+]
+
+[[package]]
+name = "tree-sitter-language-pack"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tree-sitter" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/de/6e8d0b8b3883e034eb6e8de36745e3839e4cf0a080eaffcbb3cc2d3dc06e/tree_sitter_language_pack-1.6.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:d9d2e394991eefb6dc5971ae95795654ba54a8ee3410585facab02525d60ccd3", size = 2247370, upload-time = "2026-04-14T09:25:53.17Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/c4/fc366dbf351a60c0be82040ac1d21c1c2c4dc0e9ee3890b1b67d9e8504c4/tree_sitter_language_pack-1.6.0-cp310-abi3-manylinux_2_34_aarch64.whl", hash = "sha256:adf0a7529ce6aed91d05f89f38cd25ac605189500ad63d488bb1c88fddc26a02", size = 2425750, upload-time = "2026-04-14T09:25:55.373Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/38/e8d0acfff2bbc912ecdf24ae01985a2ec45e92685e72e4983ea52f2325e4/tree_sitter_language_pack-1.6.0-cp310-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:e05b73032e671465e8946b459eec3407fbacd59e214a643636f5919761eee417", size = 2561118, upload-time = "2026-04-14T09:25:57.455Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/18/9a8a24f54e472b21ab7a3f207b58569b8a7c83fdb24e7ce67c4914d5eac2/tree_sitter_language_pack-1.6.0-cp310-abi3-win_amd64.whl", hash = "sha256:a1222defc8ba8558f221e3d8319b5e1f97bd1b7f8320b6b1bbaf3d5591649af7", size = 2357768, upload-time = "2026-04-14T09:26:00.257Z" },
 ]
 
 [[package]]

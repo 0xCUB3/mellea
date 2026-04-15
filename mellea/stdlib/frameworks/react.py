@@ -7,6 +7,10 @@ any list of ``AbstractMelleaTool`` instances and a ``ChatContext`` for multi-tur
 history tracking. Raises ``RuntimeError`` if the loop ends without a final answer.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable
+
 # from PIL import Image as PILImage
 from mellea.backends.model_options import ModelOption
 from mellea.core.backend import Backend, BaseModelSubclass
@@ -24,6 +28,37 @@ from mellea.stdlib.components.react import (
 from mellea.stdlib.context import ChatContext
 
 
+def _compress_old_tool_outputs(context: ChatContext) -> ChatContext:
+    """Replace old tool outputs with short summaries to free context window."""
+    from mellea.stdlib.components.chat import Message
+
+    messages = context.view_for_generation()
+    if messages is None or len(messages) < 6:
+        return context
+
+    new_ctx = ChatContext()
+    # Keep first 2 messages (system + goal) and last 4 messages verbatim.
+    # Compress everything in between.
+    keep_tail = 4
+    for i, msg in enumerate(messages):
+        if i < 2 or i >= len(messages) - keep_tail:
+            new_ctx = new_ctx.add(msg)
+        elif isinstance(msg, ToolMessage) and len(str(msg.content)) > 200:
+            summary = str(msg.content)[:150] + "..."
+            compressed = ToolMessage(
+                role=msg.role,
+                name=msg.name,
+                content=f"[compressed] {summary}",
+                tool_output=getattr(msg, "_tool_output", msg.content),
+                args=msg.arguments,
+                tool=getattr(msg, "_tool"),
+            )
+            new_ctx = new_ctx.add(compressed)
+        else:
+            new_ctx = new_ctx.add(msg)
+    return new_ctx
+
+
 async def react(
     goal: str,
     context: ChatContext,
@@ -36,6 +71,7 @@ async def react(
     model_options: dict | None = None,
     tools: list[AbstractMelleaTool] | None,
     loop_budget: int = 10,
+    on_turn: Callable[[int, int, ChatContext], ChatContext] | None = None,
 ) -> tuple[ComputedModelOutputThunk[str], ChatContext]:
     """Asynchronous ReACT pattern (Think -> Act -> Observe -> Repeat Until Done); attempts to accomplish the provided goal given the provided tools.
 
@@ -47,6 +83,7 @@ async def react(
         model_options: additional model options, which will upsert into the model/backend's defaults.
         tools: the list of tools to use
         loop_budget: the number of steps allowed; use -1 for unlimited
+        on_turn: optional callback ``(turn, budget, ctx) -> ctx`` called at the start of each turn
 
     Returns:
         A (ModelOutputThunk, Context) if `return_sampling_results` is `False`, else returns a `SamplingResult`.
@@ -76,10 +113,20 @@ async def react(
 
     context = context.add(ReactInitiator(goal, tools))
 
+    import os
+
+    compress_context = os.environ.get("MCODE_COMPRESS_CONTEXT", "0") == "1"
+
     turn_num = 0
     while (turn_num < loop_budget) or (loop_budget == -1):
         turn_num += 1
         FancyLogger.get_logger().info(f"## ReACT TURN NUMBER {turn_num}")
+
+        if compress_context and turn_num == max(3, loop_budget // 2):
+            context = _compress_old_tool_outputs(context)
+
+        if on_turn is not None:
+            context = on_turn(turn_num, loop_budget, context)
 
         step, next_context = await mfuncs.aact(
             action=ReactThought(),
@@ -98,6 +145,11 @@ async def react(
 
         is_final = False
         tool_responses: list[ToolMessage] = []
+        if step.tool_calls is None:
+            val = step._underlying_value or ""
+            FancyLogger.get_logger().info(
+                f"No tool calls. Model output: {str(val)[:300]}"
+            )
         if step.tool_calls is not None:
             # Code below assumes the tool is called here.
             tool_responses = mfuncs._call_tools(step, backend=backend)

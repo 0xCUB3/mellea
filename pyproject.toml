@@ -98,6 +98,11 @@ sandbox = [
     "llm-sandbox[docker]>=0.3.23",
 ]
 
+agent = [
+    "tree-sitter-language-pack>=0.13",
+    "networkx>=3.0",
+]
+
 backends = ["mellea[watsonx,hf,litellm]"]
 
 hooks = [
@@ -105,7 +110,7 @@ hooks = [
     "grpcio>=1.78.0",
 ]
 
-all = ["mellea[backends,docling,tools,telemetry,server,sandbox,granite_retriever,hooks]"]
+all = ["mellea[backends,docling,tools,telemetry,server,sandbox,granite_retriever,agent,hooks]"]
 
 [dependency-groups]
 # Development groups: uv sync --all-groups
@@ -130,6 +135,8 @@ test = [
     "nbmake>=1.5.5",  # Notebook testing
     "sentencepiece==0.2.1",  # Necessary for test_huggingface_tools test because of Mistral model
     "jsonschema",
+    "tree-sitter-language-pack>=0.13",
+    "networkx>=3.0",
     # Example-only dependencies (run via pytest)
     "langchain-community>=0.3.0",
     "ddgs>=9.0.0",  # Required by DuckDuckGoSearchResults in langchain-community

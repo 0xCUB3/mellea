@@ -1270,6 +1270,10 @@ async def _acall_tools(result: ModelOutputThunk, backend: Backend) -> list[ToolM
         return outputs
 
     for name, tool in tool_calls.items():
+        FancyLogger.get_logger().info(
+            f"Calling tool: {name} with args: {str(tool.args)[:200]}"
+        )
+
         # --- tool_pre_invoke ---
         if has_plugins(HookType.TOOL_PRE_INVOKE):
             pre_payload = ToolPreInvokePayload(model_tool_call=tool)
@@ -1291,7 +1295,11 @@ async def _acall_tools(result: ModelOutputThunk, backend: Backend) -> list[ToolM
             output = e
             success = False
             error = e
+            FancyLogger.get_logger().warning(
+                f"Tool {name} raised: {type(e).__name__}: {e}"
+            )
         latency_ms = int((time.monotonic() - t0) * 1000)
+        FancyLogger.get_logger().info(f"Tool {name} returned: {str(output)[:200]}")
 
         # Default to the output. Attempt to properly print it. If that doesn't result in a str,
         # stringify it.
